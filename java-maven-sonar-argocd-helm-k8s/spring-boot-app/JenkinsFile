@@ -5,29 +5,34 @@ pipeline {
       args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
     }
   }
-
-
-  stage('Static Code Analysis') {
-  environment {
-    SONAR_URL = "http://13.50.15.108:9000"
-    JAVA_HOME = '/path/to/your/java/17'  // Adjust to your JDK path
-  }
-  tools {
-    maven 'Maven 3.8.4'  // Assuming Maven is installed in Jenkins as 'Maven 3.8.4'
-  }
-  steps {
-    withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
-      sh '''
-        cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
-        mvn sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=${SONAR_URL}
-      '''
+  stages {
+    stage('Checkout') {
+      steps {
+        sh 'echo passed'
+        git branch: 'main', url: 'https://github.com/vikramvimal/Jenkins-Zero-To-Hero.git'
+      }
     }
-  }
-}
+    stage('Build and Test') {
+      steps {
+        sh 'ls -ltr'
+        // build the project and create a JAR file
+        sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn clean package'
+      }
+    }
+    stage('Static Code Analysis') {
+      environment {
+        SONAR_URL = "http://16.16.74.61:9000/"
+      }
+      steps {
+        withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
+          sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=${SONAR_URL}'
+        }
+      }
+    }
     stage('Build and Push Docker Image') {
       environment {
         DOCKER_IMAGE = "vikramvimal/ultimate-cicd:${BUILD_NUMBER}"
-        // DOCKERFILE_LOCATION = "java-maven-sonar-argocd-helm-k8s/spring-boot-app/Dockerfile"
+        //DOCKERFILE_LOCATION = "java-maven-sonar-argocd-helm-k8s/spring-boot-app/Dockerfile"
         REGISTRY_CREDENTIALS = credentials('docker-cred')
       }
       steps {
@@ -43,7 +48,7 @@ pipeline {
     stage('Update Deployment File') {
         environment {
             GIT_REPO_NAME = "Jenkins-Zero-To-Hero"
-            GIT_USER_NAME = "vikramvimal"
+            GIT_USER_NAME = "iam-veeramalla"
         }
         steps {
             withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
@@ -60,4 +65,4 @@ pipeline {
         }
     }
   }
-
+}
